@@ -14,6 +14,7 @@ import type {
   EmailSettings,
   MessageTemplate,
   MessageTemplateChannel,
+  OutputFieldSettings,
   SignatureSettings,
   TeamMember,
   Invitation,
@@ -1147,6 +1148,90 @@ function TemplateStudioSection({ channel }: { channel: MessageTemplateChannel })
   );
 }
 
+function OutputFieldsSection() {
+  const qc = useQueryClient();
+  const [message, setMessage] = useState<string | undefined>();
+
+  const { data, isLoading } = useQuery<OutputFieldSettings>({
+    queryKey: ["settings", "output-fields"],
+    queryFn: async () => (await api.get("/settings/output-fields")).data,
+  });
+
+  const [form, setForm] = useState<OutputFieldSettings>({
+    show_paper_cost: true,
+    show_conversion_cost: true,
+    show_sheet_weight: true,
+    show_printing_cost: true,
+    show_lamination_cost: true,
+    show_die_cost: true,
+    show_punching_cost: true,
+    show_varnish_cost: true,
+  });
+
+  useEffect(() => {
+    if (data) setForm(data);
+  }, [data]);
+
+  const mutation = useMutation({
+    mutationFn: () => api.put("/settings/output-fields", form),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["settings", "output-fields"] });
+      setMessage("Saved");
+      setTimeout(() => setMessage(undefined), 2500);
+    },
+    onError: (err) => setMessage(getAxiosErrorMessage(err)),
+  });
+
+  const FIELDS: { key: keyof OutputFieldSettings; label: string; hint: string }[] = [
+    { key: "show_paper_cost", label: "Paper Cost", hint: "Raw board / paper cost per box" },
+    { key: "show_conversion_cost", label: "Conversion Cost", hint: "Corrugation & converting per box" },
+    { key: "show_sheet_weight", label: "Sheet Weight", hint: "Calculated sheet weight in kg" },
+    { key: "show_printing_cost", label: "Printing Cost", hint: "Flexo / offset print cost per box" },
+    { key: "show_lamination_cost", label: "Lamination Cost", hint: "Lamination cost per box" },
+    { key: "show_die_cost", label: "Die Cost", hint: "Die development amortised per box" },
+    { key: "show_punching_cost", label: "Punching Cost", hint: "Punching / cutting cost per box" },
+    { key: "show_varnish_cost", label: "Varnish Cost", hint: "Varnish / coating cost per box" },
+  ];
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  return (
+    <SectionCard
+      title="Output Field Visibility"
+      description="Choose which cost breakdown fields appear in quote PDFs, bulk print, and email drafts."
+      icon={<Settings2 className="h-4 w-4" />}
+    >
+      <div className="grid gap-3 sm:grid-cols-2">
+        {FIELDS.map(({ key, label, hint }) => (
+          <label key={key} className="flex items-start gap-3 rounded-lg border border-border bg-background p-3 cursor-pointer hover:bg-muted/30 transition-colors">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 accent-primary"
+              checked={form[key]}
+              onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.checked }))}
+            />
+            <div>
+              <p className="text-sm font-medium leading-none">{label}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>
+            </div>
+          </label>
+        ))}
+      </div>
+      <div className="flex items-center gap-3 pt-1">
+        <button
+          type="button"
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        >
+          <Save className="h-4 w-4" /> Save visibility
+        </button>
+        <SaveBanner isError={mutation.isError} isPending={mutation.isPending} message={message} />
+      </div>
+    </SectionCard>
+  );
+}
+
 function OperationsSettingsSection() {
   const modules = [
     { name: "Client Pricing Rules", status: "Planned", note: "API endpoints not available yet" },
@@ -1193,6 +1278,7 @@ const TABS = [
   { id: "signatures", label: "Signatures", adminOnly: true },
   { id: "email-templates", label: "Email Templates", adminOnly: true },
   { id: "whatsapp-templates", label: "WhatsApp Templates", adminOnly: true },
+  { id: "output-fields", label: "Output Fields", adminOnly: true },
   { id: "operations", label: "Operations", adminOnly: true },
   { id: "team", label: "Team & Users", adminOnly: true },
   { id: "billing", label: "Billing & Plan", adminOnly: true },
@@ -1242,6 +1328,7 @@ export default function SettingsPage() {
         {canManageAdminSettings && tab === "signatures" && <SignatureSettingsSection />}
         {canManageAdminSettings && tab === "email-templates" && <TemplateStudioSection channel="email" />}
         {canManageAdminSettings && tab === "whatsapp-templates" && <TemplateStudioSection channel="whatsapp" />}
+        {canManageAdminSettings && tab === "output-fields" && <OutputFieldsSection />}
         {canManageAdminSettings && tab === "operations" && <OperationsSettingsSection />}
         {canViewTeam && tab === "team" && <TeamManagementSection />}
         {canViewBilling && tab === "billing" && <BillingPlanSection />}

@@ -378,6 +378,17 @@ export interface TemplatePreset {
   body_html: string | null;
 }
 
+export interface OutputFieldSettings {
+  show_paper_cost: boolean;
+  show_conversion_cost: boolean;
+  show_sheet_weight: boolean;
+  show_printing_cost: boolean;
+  show_lamination_cost: boolean;
+  show_die_cost: boolean;
+  show_punching_cost: boolean;
+  show_varnish_cost: boolean;
+}
+
 export interface AiDraftQuoteContextItem {
   box_name: string | null;
   description: string | null;

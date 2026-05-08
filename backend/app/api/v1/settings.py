@@ -1,6 +1,7 @@
-"""Settings API: business defaults, quote terms, email settings, company profile, AI provider, signatures, and templates."""
+"""Settings API: business defaults, quote terms, email settings, company profile, AI provider, signatures, templates, and output fields."""
 from __future__ import annotations
 
+import json as _json
 import re
 import uuid
 from html import escape
@@ -20,6 +21,7 @@ from app.database import get_db
 from app.models.quote import Quote, QuoteItem, QuoteVersion
 from app.models.settings import (
     AiProviderSetting,
+    AppSetting,
     BusinessDefault,
     CompanyProfile,
     MessageTemplate,
@@ -759,3 +761,62 @@ async def generate_ai_draft(
         "variables": _extract_variables(draft.get("subject"), body_html, body_text),
         "quote_context": quote_context,
     }
+
+
+# ── Output Field Visibility ───────────────────────────────────────────────────
+
+_OUTPUT_FIELD_KEYS = [
+    "show_paper_cost",
+    "show_conversion_cost",
+    "show_sheet_weight",
+    "show_printing_cost",
+    "show_lamination_cost",
+    "show_die_cost",
+    "show_punching_cost",
+    "show_varnish_cost",
+]
+_DEFAULT_OUTPUT_FIELDS: dict[str, bool] = {k: True for k in _OUTPUT_FIELD_KEYS}
+
+
+class OutputFieldsUpdate(BaseModel):
+    show_paper_cost: bool = True
+    show_conversion_cost: bool = True
+    show_sheet_weight: bool = True
+    show_printing_cost: bool = True
+    show_lamination_cost: bool = True
+    show_die_cost: bool = True
+    show_punching_cost: bool = True
+    show_varnish_cost: bool = True
+
+
+@router.get("/output-fields")
+async def get_output_fields(
+    current_user: SessionUser = Depends(require_role("viewer")),
+    db: AsyncSession = Depends(get_db),
+):
+    tid = uuid.UUID(current_user.tenant_id)
+    setting_key = f"output_fields:{tid}"
+    row = await db.scalar(select(AppSetting).where(AppSetting.key == setting_key))
+    if row is None:
+        return _DEFAULT_OUTPUT_FIELDS
+    stored = _json.loads(row.value)
+    # Merge with defaults so new fields appear as True when not yet persisted
+    return {**_DEFAULT_OUTPUT_FIELDS, **{k: v for k, v in stored.items() if k in _OUTPUT_FIELD_KEYS}}
+
+
+@router.put("/output-fields")
+async def update_output_fields(
+    body: OutputFieldsUpdate,
+    current_user: SessionUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    tid = uuid.UUID(current_user.tenant_id)
+    setting_key = f"output_fields:{tid}"
+    value = _json.dumps(body.model_dump())
+    row = await db.scalar(select(AppSetting).where(AppSetting.key == setting_key))
+    if row is not None:
+        row.value = value
+    else:
+        db.add(AppSetting(key=setting_key, value=value, description="Tenant output field visibility settings"))
+    await db.commit()
+    return body.model_dump()
