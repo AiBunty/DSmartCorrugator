@@ -1,0 +1,51 @@
+# ── Secrets & environment ────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Python ───────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# ── Node / Frontend ──────────────────────
+node_modules/
+frontend/dist/
+frontend/.vite/
+.npm/
+*.tsbuildinfo
+
+# ── Docker ───────────────────────────────
+.docker/
+
+# ── IDE ──────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*.DS_Store
+
+# ── Alembic generated  ───────────────────
+# (keep versions/ but ignore compiled pyc inside it)
+
+# ── Uploads / object-store local cache ───
+uploads/
+media/
+
+# ── OS ───────────────────────────────────
+Thumbs.db
